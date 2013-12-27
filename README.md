@@ -4,6 +4,18 @@ db-journaling
 A set of scripts to add automatic journaling to your database objects
 
 
+To install / update
+-------------
+
+Ruby is required to use the command-line tools.
+
+### Postgres
+
+./install/postgres-journaling --help
+
+This script requires that you have psql installed (and on your PATH) from the location where you run it.
+
+
 Database Implementations
 -------------
 
@@ -13,7 +25,7 @@ This installs a trigger that copies the current record into a separate journalin
 
 ```sql
 create table foo (id bigserial, key text not null);
-select journal_util.refresh_journaling('public', 'foo', 'journal', 'foo');
+select journal.refresh_journaling('public', 'foo', 'journal', 'foo');
 ```
 
 Calling the refresh_journaling function will create this table and replicate all changes from foo to journal.foo:

@@ -5,11 +5,13 @@ create or replace function journal.refresh_journal_trigger(
 declare
   row record;
   v_journal_name text;
+  v_source_name text;
   v_trigger_name text;
   v_first boolean;
   v_sql text;
 begin
   v_journal_name = p_target_schema_name || '.' || p_target_table_name;
+  v_source_name = p_source_schema_name || '.' || p_source_table_name;
   v_trigger_name = p_target_table_name || '_journal_insert_trigger';
   -- create the function
   v_sql = 'create or replace function ' || v_journal_name || '_insert() returns trigger language plpgsql as ''';
@@ -34,9 +36,8 @@ begin
   execute v_sql;
 
   -- create the trigger
-  v_sql = 'drop trigger if exists ' || v_trigger_name || ' on ' || p_source_table_name || '; ' ||
-          'create trigger ' || v_trigger_name || ' after insert or update on ' ||
-          p_source_schema_name || '.' || p_source_table_name ||
+  v_sql = 'drop trigger if exists ' || v_trigger_name || ' on ' || v_source_name || '; ' ||
+          'create trigger ' || v_trigger_name || ' after insert or update on ' || v_source_name ||
           ' for each row execute procedure ' || v_journal_name || '_insert()';
 
   execute v_sql;

@@ -84,6 +84,7 @@ begin
     end loop;
   else
     execute 'create table ' || v_journal_name || ' as select * from ' || p_source_schema_name || '.' || p_source_table_name || ' limit 0';
+    execute 'alter table ' || v_journal_name || ' add journal_timestamp timestamp with time zone not null default now() ';
     execute 'alter table ' || v_journal_name || ' add journal_id bigserial primary key ';
     execute 'comment on table ' || v_journal_name || ' is ''Created by plsql function refresh_journaling to shadow all inserts and updates on the table ' || p_source_schema_name || '.' || p_source_table_name || '''';
     execute 'create index ' || p_target_table_name || '_id_idx on ' || v_journal_name || '(id)';

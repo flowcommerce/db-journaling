@@ -1,6 +1,3 @@
-create schema journal;
-set search_path to journal;
-
 create or replace function journal.refresh_journal_trigger(
   p_source_schema_name in varchar, p_source_table_name in varchar,
   p_target_schema_name in varchar, p_target_table_name in varchar

@@ -42,3 +42,20 @@ Indexes:
     "foo_pkey" PRIMARY KEY, btree (journal_id)
     "foo_id_idx" btree (id)
 ```
+
+Automatically updating journaling tables.
+
+As of 
+
+As of Postgres 9.5, event triggers allow us to automatically refresh journaling when a table is altered. Event triggers require superuser privileges to set up, but you can create a journal which will auto-refresh by running the create_journaling function:
+
+```sql
+select journal.create_journaling('public', 'foo', 'journal', 'foo');
+```
+
+If migrating from an older version of db-journaling, you can add event triggers by using the create_event_trigger function like:
+ 
+```sql
+select journal.create_event_trigger('public', 'foo', 'journal', 'foo');
+```
+

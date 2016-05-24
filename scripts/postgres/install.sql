@@ -162,3 +162,64 @@ begin
 
 end;
 $$;
+
+--note: creating event_triggers requires superuser privileges
+create or replace function journal.create_event_trigger(
+  p_source_schema_name in varchar, p_source_table_name in varchar,
+  p_target_schema_name in varchar, p_target_table_name in varchar
+) returns void language plpgsql as $$
+declare
+  v_journal_name text;
+  v_source_name text;
+  v_function_sql text;
+  v_trigger_sql text;
+begin
+  v_journal_name = p_target_schema_name || '.' || p_target_table_name;
+  v_source_name = p_source_schema_name || '.' || p_source_table_name;
+  if exists(select 1 from information_schema.tables where table_schema = p_target_schema_name and table_name = p_target_table_name) then
+    v_function_sql =                    'CREATE OR REPLACE FUNCTION refresh_' || p_source_table_name || '_journal() RETURNS event_trigger AS ''';
+    v_function_sql := v_function_sql || ' declare ';
+    v_function_sql := v_function_sql || ' r RECORD; ';
+    v_function_sql := v_function_sql || ' func_exists boolean; ';
+    v_function_sql := v_function_sql || 'BEGIN ';
+    --for postgres 9.4 compatability, so we don't throw errors
+    v_function_sql := v_function_sql || 'select exists(select * from pg_proc where proname = ''pg_event_trigger_ddl_commands'') into func_exists; ';
+    v_function_sql := v_function_sql || 'IF func_exists THEN ';
+    v_function_sql := v_function_sql || '  FOR r IN SELECT * FROM pg_event_trigger_ddl_commands() LOOP ';
+    v_function_sql := v_function_sql || '    IF r.object_identity = ''' || v_source_name || ''' THEN ';
+    v_function_sql := v_function_sql || '      perform journal.refresh_journaling(''' || p_source_schema_name || ''', ''' || p_source_table_name || ''', ''' || p_target_schema_name || ''', ''' || p_target_table_name ||'''); ';
+    v_function_sql := v_function_sql || '    END IF; ';
+    v_function_sql := v_function_sql || '  END LOOP; ';
+    v_function_sql := v_function_sql || 'END IF; ';
+    v_function_sql := v_function_sql || 'END; ';
+    v_function_sql := v_function_sql || '''';
+    v_function_sql := v_function_sql || 'LANGUAGE plpgsql;';
+
+    v_trigger_sql =                   'CREATE EVENT TRIGGER tr_refresh_' || p_source_table_name || 'journal ';
+    v_trigger_sql := v_trigger_sql || 'ON ddl_command_end WHEN TAG IN (''ALTER TABLE'') ';
+    v_trigger_sql := v_trigger_sql || 'EXECUTE PROCEDURE refresh_' || p_source_table_name || '_journal(); ';
+
+    perform v_function_sql;
+    perform v_trigger_sql;
+
+  else
+		raise exception 'Unable to create journal event trigger for table without journaling. Use journal.create_journaling instead';
+  end if;
+end;
+$$;
+
+
+--note this requires superuser privileges
+create or replace function journal.create_journaling(
+  p_source_schema_name in varchar, p_source_table_name in varchar,
+  p_target_schema_name in varchar, p_target_table_name in varchar
+) returns varchar language plpgsql as $$
+declare
+  v_journal_name varchar;
+begin
+	select journal.refresh_journaling(p_source_schema_name, p_source_table_name, p_target_schema_name, p_target_table_name) into v_journal_name;
+  perform journal.create_event_trigger(p_source_schema_name, p_source_table_name, p_target_schema_name, p_target_table_name);
+	return v_journal_name;
+end;
+$$;
+

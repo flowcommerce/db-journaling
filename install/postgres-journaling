@@ -46,7 +46,7 @@ else
                    :host => opts[:host],
                    :port => opts[:port])
     query = psql.in_schema(schema_name) do
-      File.read("scripts/postgres/install.sql").gsub("journal.", "#{schema_name}.")
+      File.read("scripts/postgres/install.sql").gsub("journal.", "#{schema_name}.").gsub("'journal'", "'#{schema_name}'")
     end
     success = psql.execute(query)
     tell "Journaling installed successfully into the #{schema_name} schema." if success

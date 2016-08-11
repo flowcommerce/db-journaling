@@ -115,7 +115,6 @@ create or replace function journal.get_data_type_string(
 ) returns varchar language plpgsql as $$
 begin
   return case p_column.data_type
-    when 'numeric' then p_column.data_type || '(' || p_column.numeric_precision_radix::varchar || ',' || p_column.numeric_scale::varchar || ')'
     when 'character' then 'text'
     when 'character varying' then 'text'
     when '"char"' then 'text'

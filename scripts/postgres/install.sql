@@ -1,5 +1,7 @@
 create or replace function journal.quote_column(name in varchar) returns varchar language plpgsql as $$
+begin
   return '"' || name || '"';
+end;
 $$;
 
 create or replace function journal.refresh_journal_trigger(
@@ -206,7 +208,7 @@ begin
     execute 'alter table ' || v_journal_name || ' add journal_timestamp timestamp with time zone not null default now() ';
     execute 'alter table ' || v_journal_name || ' add journal_operation text not null ';
     execute 'alter table ' || v_journal_name || ' add journal_id bigserial primary key ';
-    execute 'comment on table ' || v_journal_name || ' is ''Created by plsql function refresh_journaling to shadow all inserts, updates, and deletes on the table ' || p_source_schema_name || '.' || p_source_table_name || '''';
+    execute 'comment on table ' || v_journal_name || ' is ''Created by plsql function refresh_journaling to shadow all inserts, updates and deletes on the table ' || p_source_schema_name || '.' || p_source_table_name || '''';
     perform journal.add_primary_key_data(p_source_schema_name, p_source_table_name, p_target_schema_name, p_target_table_name);
   end if;
 

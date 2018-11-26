@@ -1,3 +1,9 @@
+create or replace function journal.quote_column(name in varchar) returns varchar language plpgsql as $$
+begin
+  return '"' || name || '"';
+end;
+$$;
+
 create or replace function journal.refresh_journal_trigger(
   p_source_schema_name in varchar,
   p_source_table_name in varchar,
@@ -37,8 +43,8 @@ begin
   v_target_sql = 'TG_OP';
 
   for row in (select column_name from information_schema.columns where table_schema = p_source_schema_name and table_name = p_source_table_name order by ordinal_position) loop
-    v_sql := v_sql || ', ' || row.column_name;
-    v_target_sql := v_target_sql || ', old.' || row.column_name;
+    v_sql := v_sql || ', ' || journal.quote_column(row.column_name);
+    v_target_sql := v_target_sql || ', old.' || journal.quote_column(row.column_name);
   end loop;
 
   v_sql := v_sql || ') values (' || v_target_sql || '); ';
@@ -89,8 +95,8 @@ begin
   v_target_sql = 'TG_OP';
 
   for row in (select column_name from information_schema.columns where table_schema = p_source_schema_name and table_name = p_source_table_name order by ordinal_position) loop
-    v_sql := v_sql || ', ' || row.column_name;
-    v_target_sql := v_target_sql || ', new.' || row.column_name;
+    v_sql := v_sql || ', ' || journal.quote_column(row.column_name);
+    v_target_sql := v_target_sql || ', new.' || journal.quote_column(row.column_name);
   end loop;
 
   v_sql := v_sql || ') values (' || v_target_sql || '); ';
@@ -191,9 +197,9 @@ begin
       -- columns anyway, so leaving it populated with null will be fine.
       select journal.get_data_type_string(information_schema.columns.*) into v_data_type from information_schema.columns where table_schema = p_target_schema_name and table_name = p_target_table_name and column_name = row.column_name;
       if not found then
-        execute 'alter table ' || v_journal_name || ' add ' || row.column_name || ' ' || row.data_type;
+        execute 'alter table ' || v_journal_name || ' add ' || journal.quote_column(row.column_name) || ' ' || row.data_type;
       elsif (row.data_type != v_data_type) then
-        execute 'alter table ' || v_journal_name || ' alter column ' || row.column_name || ' type ' || row.data_type;
+        execute 'alter table ' || v_journal_name || ' alter column ' || journal.quote_column(row.column_name) || ' type ' || row.data_type;
       end if;
 
     end loop;
@@ -202,7 +208,7 @@ begin
     execute 'alter table ' || v_journal_name || ' add journal_timestamp timestamp with time zone not null default now() ';
     execute 'alter table ' || v_journal_name || ' add journal_operation text not null ';
     execute 'alter table ' || v_journal_name || ' add journal_id bigserial primary key ';
-    execute 'comment on table ' || v_journal_name || ' is ''Created by plsql function refresh_journaling to shadow all inserts and updates on the table ' || p_source_schema_name || '.' || p_source_table_name || '''';
+    execute 'comment on table ' || v_journal_name || ' is ''Created by plsql function refresh_journaling to shadow all inserts, updates and deletes on the table ' || p_source_schema_name || '.' || p_source_table_name || '''';
     perform journal.add_primary_key_data(p_source_schema_name, p_source_table_name, p_target_schema_name, p_target_table_name);
   end if;
 
